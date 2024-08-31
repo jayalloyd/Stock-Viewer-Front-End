@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>Dashboard</h1>
+        <button id="logoutButton">Logout</button>
+
+        <h2>Stock Viewer</h2>
+        <form id="stockForm">
+            <input type="text" id="stockSymbol" placeholder="Enter Stock Symbol" required>
+            <button type="submit">Get Stock Price</button>
+            <button id="saveStockButton" type="button">Save Stock</button>
+        </form>
+        <div id="stockData"></div>
+
+        <h2>Saved Stocks</h2>
+        <ul id="savedStocksList">
+            <!-- Saved stocks will be displayed here -->
+        </ul>
+    </div>
+
+    <script>
+        document.getElementById('logoutButton').addEventListener('click', function() {
+            window.location.href = 'login.html';
+        });
+
+        document.getElementById('stockForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const stockSymbol = document.getElementById('stockSymbol').value;
+            const apiKey = 'YOUR_API_KEY'; // Replace with your API key
+            const apiUrl = `https://www.alphavantage.co/query?function=GLOBAL_QUOTE&symbol=${stockSymbol}&apikey=${apiKey}`;
+
+            fetch(apiUrl)
+                .then(response => response.json())
+                .then(data => {
+                    const stockData = data['Global Quote'];
+                    const price = stockData['05. price'];
+                    document.getElementById('stockData').innerHTML = `
+                        <p>Stock Symbol: ${stockSymbol.toUpperCase()}</p>
+                        <p>Price: $${price}</p>
+                    `;
+                })
+                .catch(error => {
+                    document.getElementById('stockData').innerHTML = `
+                        <p>Error fetching stock data. Please try again later.</p>
+                    `;
+                    console.error('Error fetching data:', error);
+                });
+        });
+
+        document.getElementById('saveStockButton').addEventListener('click', function() {
+            const stockSymbol = document.getElementById('stockSymbol').value;
+
+            // Save the stock using the backend API
+            fetch('/api/saveStock', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ symbol: stockSymbol })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    alert('Stock saved successfully');
+                    loadSavedStocks();
+                } else {
+                    alert('Failed to save stock');
+                }
+            });
+        });
+
+        function loadSavedStocks() {
+            fetch('/api/getSavedStocks')
+                .then(response => response.json())
+                .then(data => {
+                    const savedStocksList = document.getElementById('savedStocksList');
+                    savedStocksList.innerHTML = '';
+                    data.forEach(stock => {
+                        const li = document.createElement('li');
+                        li.textContent = stock.symbol;
+                        savedStocksList.appendChild(li);
+                    });
+                });
+        }
+
+        // Load saved stocks when the page loads
+        window.onload = loadSavedStocks;
+    </script>
+</body>
+</html>
